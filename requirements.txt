@@ -1,0 +1,5 @@
+PyQt5
+flask_sqlalchemy
+pymysql
+Flask
+alembic

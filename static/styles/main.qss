@@ -1,0 +1,40 @@
+QWidget {
+    font-family: "Segoe UI", sans-serif;
+    font-size: 13px;
+    color: #2e2e2e;
+}
+
+QPushButton {
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+
+QPushButton:hover {
+    background-color: #45a049;
+}
+
+QTableWidget {
+    background-color: white;
+    border: 1px solid #ccc;
+    gridline-color: #ddd;
+    selection-background-color: #d0f0c0;
+    alternate-background-color: #f9f9f9;
+}
+
+QHeaderView::section {
+    background-color: #eeeeee;
+    padding: 5px;
+    border: 1px solid #ddd;
+    font-weight: bold;
+}
+
+QLabel {
+    font-size: 13px;
+    font-weight: normal;
+}
+
+QMessageBox {
+    background-color: white;
+}
