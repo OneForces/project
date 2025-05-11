@@ -9,7 +9,7 @@ if __name__ == "__main__":
     qt_app = QtWidgets.QApplication(sys.argv)
 
     with app.app_context():
-        main_window = MainWindow(user_role="Инженер")
+        main_window = MainWindow(user_role="Диспетчер")
         main_window.show()
 
     sys.exit(qt_app.exec_())

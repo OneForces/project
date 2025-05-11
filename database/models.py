@@ -1,12 +1,12 @@
 from datetime import datetime
-from core import db  # используем уже инициализированный экземпляр из core
+from core import db
 
 class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password = db.Column(db.String(100), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(50), nullable=False)
     position = db.Column(db.String(100), nullable=False)
@@ -20,6 +20,9 @@ class User(db.Model):
     def get_by_role(cls, role):
         return cls.query.filter_by(role=role).all()
 
+    def __repr__(self):
+        return f"<User {self.full_name} ({self.role})>"
+
 class Stage(db.Model):
     __tablename__ = 'stages'
 
@@ -32,6 +35,9 @@ class Stage(db.Model):
     assignments = db.relationship('Assignment', backref='stage', lazy=True)
     documents = db.relationship('Document', backref='stage', lazy=True)
 
+    def __repr__(self):
+        return f"<Stage {self.name} - {self.status}>"
+
 class Assignment(db.Model):
     __tablename__ = 'assignments'
 
@@ -43,7 +49,7 @@ class Assignment(db.Model):
     response_file = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(50), default='отправлено')  # ✅ добавлено
+    status = db.Column(db.String(50), default='отправлено')
 
     def __repr__(self):
         return f"<Assignment to {self.receiver_id} file={self.file_path}>"
@@ -57,6 +63,9 @@ class ActionLog(db.Model):
     description = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+    def __repr__(self):
+        return f"<ActionLog {self.user_id}: {self.action_type}>"
+
 class Document(db.Model):
     __tablename__ = 'documents'
 
@@ -65,3 +74,15 @@ class Document(db.Model):
     file_path = db.Column(db.String(255), nullable=False)
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<Document {self.file_path}>"
+
+class RegistrationCode(db.Model):
+    __tablename__ = 'registration_codes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(100), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<RegistrationCode {self.code}>"

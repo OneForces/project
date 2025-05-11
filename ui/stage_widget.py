@@ -4,6 +4,8 @@ from PyQt5.QtWidgets import QFileDialog, QLabel
 from ui.stage_form import Ui_StageForm
 import locale
 import os
+from core.roles_data import ROUTING_RULES
+
 
 # Установка локали для русских дат
 try:
@@ -15,15 +17,16 @@ except:
         pass
 
 class StageWidget(QtWidgets.QWidget, Ui_StageForm):
-    def __init__(self, stage_data=None, parent=None):
+    def __init__(self, stage_data=None, current_user=None, parent=None):
         super().__init__(parent)
         self.setupUi(self)
         self.configure_user_table()
 
-        self.attached_file_path = None  # будет хранить путь к прикреплённому файлу
-        self.sendButton.clicked.connect(self.send_assignments)
+        self.current_user = current_user
+        self.attached_file_path = None
 
-        self.attachButton.clicked.connect(self.attach_files)  # обработка нажатия кнопки
+        self.attachButton.clicked.connect(self.attach_files)
+        self.sendButton.clicked.connect(self.send_assignments)
 
         if stage_data:
             self.setup_stage(stage_data)
@@ -51,13 +54,22 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
             self.deadlineLabel.setText("Срок не установлен")
 
     def populate_user_table(self, users):
-        """Заполнение таблицы пользователями"""
         self.tableWidget.setRowCount(0)
 
-        for row, user in enumerate(users):
+        # Получаем роль текущего пользователя
+        sender_role = self.current_user.role if self.current_user else "Гость"
+        allowed_roles = ROUTING_RULES.get(sender_role, [])
+
+        for user in users:
+            if self.current_user and user.id == self.current_user.id:
+                continue  # нельзя отправлять себе
+
+            if "*" not in allowed_roles and user.role not in allowed_roles:
+                continue
+
+            row = self.tableWidget.rowCount()
             self.tableWidget.insertRow(row)
 
-            # Чекбокс с привязанным user-объектом
             checkbox = QtWidgets.QTableWidgetItem()
             checkbox.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
             checkbox.setCheckState(QtCore.Qt.Unchecked)
@@ -69,6 +81,7 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
             self.tableWidget.setItem(row, 3, QtWidgets.QTableWidgetItem(user.position))
 
         self.tableWidget.resizeColumnsToContents()
+
 
     def get_selected_users(self):
         """Получить всех отмеченных пользователей"""
@@ -90,6 +103,7 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
             filename = os.path.basename(file_path)
             self.attachedFilesLabel.setText(f"Выбран: {filename}")
             self.attached_file_path = file_path  # сохранить путь
+    
     def send_assignments(self):
         users = self.get_selected_users()
         file_path = self.attached_file_path
@@ -98,12 +112,16 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
             QtWidgets.QMessageBox.warning(self, "Ошибка", "Выберите пользователей и прикрепите файл.")
             return
 
+        sender_id = self.current_user.id if self.current_user else None
+        stage_id = getattr(self.parent(), "current_stage", None)
+        stage_id = stage_id.id if stage_id else 1
+
         with app.app_context():
             for user in users:
                 assignment = Assignment(
-                    sender_id=1,  # ← пока захардкожено, заменим на self.current_user.id
+                    sender_id=sender_id,
                     receiver_id=user.id,
-                    stage_id=getattr(self.parent(), "current_stage", SimpleNamespace(id=1)).id,
+                    stage_id=stage_id,
                     file_path=file_path,
                     response_file=None,
                     created_at=datetime.now(),
@@ -114,4 +132,6 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
 
             db.session.commit()
 
-        QtWidgets.QMessageBox.information(self, "Успешно", "Задание(я) отправлено.")
+        QtWidgets.QMessageBox.information(self, "Готово", "Задания отправлены.")
+        self.attachedFilesLabel.setText("Файлы не выбраны")
+        self.attached_file_path = None

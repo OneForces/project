@@ -1,10 +1,12 @@
-from PyQt5.QtWidgets import QApplication
-from ui.main_window import MainWindow
-from core import app  # подтягиваем контекст
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
-if __name__ == "__main__":
-    import sys
-    qt_app = QApplication(sys.argv)
-    window = MainWindow(user_role="Инженер")
-    window.show()
-    sys.exit(qt_app.exec_())
+db = SQLAlchemy()
+
+def create_app():
+    app = Flask(__name__)
+    app.config.from_pyfile("config.py")
+    db.init_app(app)
+    return app
+
+app = create_app()
