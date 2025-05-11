@@ -5,7 +5,9 @@ from ui.stage_form import Ui_StageForm
 import locale
 import os
 from core.roles_data import ROUTING_RULES
-
+from core import db, app
+from database.models import Assignment
+from datetime import datetime
 
 # Установка локали для русских дат
 try:
@@ -29,7 +31,18 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
         self.sendButton.clicked.connect(self.send_assignments)
 
         if stage_data:
+            self.stage_id = stage_data.get('id', 1)
             self.setup_stage(stage_data)
+
+            # Активировать интерфейс прикрепления и отправки для этапов 1, 4, 7
+            if self.stage_id in [1, 4, 7]:
+                from database.models import User
+                with app.app_context():
+                    users = db.session.query(User).all()
+                    self.populate_user_table(users)
+            else:
+                self.attachButton.setDisabled(True)
+                self.sendButton.setDisabled(True)
 
     def configure_user_table(self):
         """Настройка таблицы пользователей с чекбоксами"""
@@ -56,13 +69,12 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
     def populate_user_table(self, users):
         self.tableWidget.setRowCount(0)
 
-        # Получаем роль текущего пользователя
         sender_role = self.current_user.role if self.current_user else "Гость"
         allowed_roles = ROUTING_RULES.get(sender_role, [])
 
         for user in users:
             if self.current_user and user.id == self.current_user.id:
-                continue  # нельзя отправлять себе
+                continue  # нельзя себе
 
             if "*" not in allowed_roles and user.role not in allowed_roles:
                 continue
@@ -76,34 +88,29 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
             checkbox.setData(QtCore.Qt.UserRole, user)
 
             self.tableWidget.setItem(row, 0, checkbox)
-            self.tableWidget.setItem(row, 1, QtWidgets.QTableWidgetItem(user.last_name))
-            self.tableWidget.setItem(row, 2, QtWidgets.QTableWidgetItem(user.first_name))
+            self.tableWidget.setItem(row, 1, QtWidgets.QTableWidgetItem(user.full_name))
+            self.tableWidget.setItem(row, 2, QtWidgets.QTableWidgetItem(""))
             self.tableWidget.setItem(row, 3, QtWidgets.QTableWidgetItem(user.position))
 
         self.tableWidget.resizeColumnsToContents()
 
-
     def get_selected_users(self):
-        """Получить всех отмеченных пользователей"""
         selected_users = []
-
         for row in range(self.tableWidget.rowCount()):
             item = self.tableWidget.item(row, 0)
             if item and item.checkState() == QtCore.Qt.Checked:
                 user = item.data(QtCore.Qt.UserRole)
                 if user:
                     selected_users.append(user)
-
         return selected_users
 
     def attach_files(self):
-        """Открытие диалога и вывод выбранного файла"""
         file_path, _ = QFileDialog.getOpenFileName(self, "Выберите файл")
         if file_path:
             filename = os.path.basename(file_path)
             self.attachedFilesLabel.setText(f"Выбран: {filename}")
-            self.attached_file_path = file_path  # сохранить путь
-    
+            self.attached_file_path = file_path
+
     def send_assignments(self):
         users = self.get_selected_users()
         file_path = self.attached_file_path
@@ -113,15 +120,13 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
             return
 
         sender_id = self.current_user.id if self.current_user else None
-        stage_id = getattr(self.parent(), "current_stage", None)
-        stage_id = stage_id.id if stage_id else 1
 
         with app.app_context():
             for user in users:
                 assignment = Assignment(
                     sender_id=sender_id,
                     receiver_id=user.id,
-                    stage_id=stage_id,
+                    stage_id=self.stage_id,
                     file_path=file_path,
                     response_file=None,
                     created_at=datetime.now(),
@@ -129,7 +134,6 @@ class StageWidget(QtWidgets.QWidget, Ui_StageForm):
                     status="отправлено"
                 )
                 db.session.add(assignment)
-
             db.session.commit()
 
         QtWidgets.QMessageBox.information(self, "Готово", "Задания отправлены.")

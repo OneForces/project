@@ -1,6 +1,7 @@
 from datetime import datetime
 from core import db
 
+
 class User(db.Model):
     __tablename__ = 'users'
 
@@ -11,8 +12,17 @@ class User(db.Model):
     role = db.Column(db.String(50), nullable=False)
     position = db.Column(db.String(100), nullable=False)
 
-    sent_assignments = db.relationship('Assignment', foreign_keys='Assignment.sender_id', backref='sender', lazy=True)
-    received_assignments = db.relationship('Assignment', foreign_keys='Assignment.receiver_id', backref='receiver', lazy=True)
+    sent_assignments = db.relationship(
+        'Assignment',
+        foreign_keys='Assignment.sender_id',
+        lazy=True
+        )
+
+    received_assignments = db.relationship(
+        'Assignment',
+        foreign_keys='Assignment.receiver_id',
+        lazy=True
+        )
     documents = db.relationship('Document', backref='uploader', foreign_keys='Document.uploaded_by', lazy=True)
     actions = db.relationship('ActionLog', backref='user', lazy=True)
 
@@ -32,11 +42,15 @@ class Stage(db.Model):
     completed_at = db.Column(db.DateTime)
     status = db.Column(db.String(20), default='Не начат')
 
-    assignments = db.relationship('Assignment', backref='stage', lazy=True)
+    assignments = db.relationship('Assignment', lazy=True)  # ⚠️ УБРАН backref
     documents = db.relationship('Document', backref='stage', lazy=True)
 
     def __repr__(self):
         return f"<Stage {self.name} - {self.status}>"
+
+from core import db
+from datetime import datetime
+from database.models import User, Stage  # если ещё не импортировано
 
 class Assignment(db.Model):
     __tablename__ = 'assignments'
@@ -45,14 +59,21 @@ class Assignment(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     stage_id = db.Column(db.Integer, db.ForeignKey('stages.id'), nullable=False)
+
     file_path = db.Column(db.String(255))
     response_file = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50), default='отправлено')
 
+    # ✅ без backref, только relationship с foreign_keys
+    sender = db.relationship('User', foreign_keys=[sender_id])
+    receiver = db.relationship('User', foreign_keys=[receiver_id])
+    stage = db.relationship('Stage')
+
     def __repr__(self):
-        return f"<Assignment to {self.receiver_id} file={self.file_path}>"
+        return f"<Assignment to={self.receiver_id} file={self.file_path}>"
+
 
 class ActionLog(db.Model):
     __tablename__ = 'action_logs'

@@ -25,16 +25,20 @@ class ReceivedAssignmentsWidget(QtWidgets.QWidget):
 
     def load_assignments(self):
         from database.models import Assignment
-        with app.app_context():  # ВАЖНО!
+        with app.app_context():
             self.assignments = Assignment.query.filter_by(receiver_id=self.user.id).all()
+
+        print("📥 Загрузка заданий для пользователя:", self.user.full_name, self.user.id)
+        print("Найдено заданий:", len(self.assignments))
+        for a in self.assignments:
+            print(f"⤷ От: {a.sender_id} → Кому: {a.receiver_id} | Файл: {a.file_path} | Статус: {a.status}")
 
         self.table.setRowCount(len(self.assignments))
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Отправитель", "Файл", "Ответ", "Дата"])
 
-    # рендерим таблицу
         for row, a in enumerate(self.assignments):
-            sender = getattr(a.sender, "full_name", "—")
+            sender = getattr(a.sender, "full_name", "—")  # требует relationship(sender=...)
             self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(sender))
             self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(a.file_path or "—"))
             self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(a.response_file or "—"))
@@ -43,6 +47,7 @@ class ReceivedAssignmentsWidget(QtWidgets.QWidget):
             ))
 
         self.table.resizeColumnsToContents()
+
 
     def send_response(self):
         selected = self.table.selectedItems()
