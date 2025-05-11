@@ -1,0 +1,62 @@
+# Виртуальное окружение
+venv/
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Логи
+*.log
+
+# Базы данных
+*.sqlite3
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# PyInstaller
+dist/
+build/
+*.spec
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Тестовые покрытия
+htmlcov/
+.coverage
+coverage.xml
+.cache
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# pytest
+.pytest_cache/
+
+# alembic
+migrations/versions/*.py
+
+# Output
+output/
+*.out
+*.tmp
+
+# Docker
+*.pid
+*.sock
+docker-compose.override.yml
