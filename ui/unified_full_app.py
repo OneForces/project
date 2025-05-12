@@ -8,9 +8,9 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout,
     QMessageBox, QHBoxLayout, QLineEdit
 )
+from flask_app import app
 from PyQt5.QtGui import QIcon
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import current_app as app
 from db_instance import db
 from sqlalchemy.exc import IntegrityError
 from database.models import User, RegistrationCode

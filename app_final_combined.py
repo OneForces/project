@@ -1,30 +1,19 @@
 import sys
 import os
 import json
-from flask import Flask
-from db_instance import db
 from PyQt5.QtWidgets import QApplication
 from database.models import User
 from ui.main_window import MainWindow
 from ui.unified_full_app import LoginWindow
+from flask_app import app  # ✅ теперь из корня
+
+from db_instance import db  # 🔄 нужно для session
 
 # === 🔧 Поиск qwindows.dll
 def find_qwindows_dll():
     for root, dirs, files in os.walk(os.path.expanduser("~")):
         if "qwindows.dll" in files:
             break
-
-
-def create_app():
-    app = Flask(__name__)
-    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-    config_path = os.path.join(BASE_DIR, "config.py")
-    app.config.from_pyfile(config_path)
-    db.init_app(app)
-    return app
-
-app = create_app()
-
 
 # === 🔐 Загрузка текущей сессии
 def load_session():
@@ -37,7 +26,6 @@ def load_session():
     except:
         pass
     return None
-
 
 # === 🚀 Запуск GUI
 if __name__ == "__main__":

@@ -102,12 +102,12 @@ class ActionLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    action_type = db.Column(db.String(50))
-    description = db.Column(db.Text)
+    action_type = db.Column(db.String(50), nullable=False)
+    description = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f"<ActionLog {self.user_id}: {self.action_type}>"
+        return f"<ActionLog user_id={self.user_id}, action='{self.action_type}'>"
 
 class Document(db.Model):
     __tablename__ = 'documents'

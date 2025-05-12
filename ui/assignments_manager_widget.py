@@ -9,7 +9,9 @@ from datetime import datetime
 import os
 import shutil
 import subprocess
-
+from flask_app import app
+from db_instance import db
+from database.models import User
 
 class AssignmentsManagerWidget(QtWidgets.QWidget):
     def __init__(self, current_user, stage_data=None, parent=None):
@@ -51,32 +53,35 @@ class AssignmentsManagerWidget(QtWidgets.QWidget):
         self.load_assignments()
 
     def load_users(self):
+        from flask_app import app  # если не импортировал глобально
+
         self.user_table.setRowCount(0)
+        allowed_roles = ROUTING_RULES.get(self.current_user.role, [])
+
         with app.app_context():
             users = db.session.query(User).all()
 
-        allowed_roles = ROUTING_RULES.get(self.current_user.role, [])
+            for user in users:
+                if user.id == self.current_user.id:
+                    continue
+                if "*" not in allowed_roles and user.role not in allowed_roles:
+                    continue
 
-        for user in users:
-            if user.id == self.current_user.id:
-                continue
-            if "*" not in allowed_roles and user.role not in allowed_roles:
-                continue
+                row = self.user_table.rowCount()
+                self.user_table.insertRow(row)
 
-            row = self.user_table.rowCount()
-            self.user_table.insertRow(row)
+                checkbox = QtWidgets.QTableWidgetItem()
+                checkbox.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                checkbox.setCheckState(QtCore.Qt.Unchecked)
+                checkbox.setData(QtCore.Qt.UserRole, user)
 
-            checkbox = QtWidgets.QTableWidgetItem()
-            checkbox.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
-            checkbox.setCheckState(QtCore.Qt.Unchecked)
-            checkbox.setData(QtCore.Qt.UserRole, user)
+                self.user_table.setItem(row, 0, checkbox)
+                self.user_table.setItem(row, 1, QtWidgets.QTableWidgetItem(user.full_name))
+                self.user_table.setItem(row, 2, QtWidgets.QTableWidgetItem(""))
+                self.user_table.setItem(row, 3, QtWidgets.QTableWidgetItem(user.position))
 
-            self.user_table.setItem(row, 0, checkbox)
-            self.user_table.setItem(row, 1, QTableWidgetItem(user.full_name))
-            self.user_table.setItem(row, 2, QTableWidgetItem(""))
-            self.user_table.setItem(row, 3, QTableWidgetItem(user.position))
+            self.user_table.resizeColumnsToContents()
 
-        self.user_table.resizeColumnsToContents()
 
     def get_selected_users(self):
         selected = []
@@ -183,7 +188,7 @@ class AssignmentsManagerWidget(QtWidgets.QWidget):
         log_action(
             user_id=self.current_user.id,
             action_type="Ответ на задание",
-            description=f"Ответ на задание: {assignment.file_path}"
+            description="Пользователь отправил ответ на задание"
         )
 
         QMessageBox.information(self, "Готово", "Ответ отправлен.")

@@ -1,6 +1,8 @@
 from PyQt5 import QtWidgets
 from database.models import User, ActionLog, db
 from datetime import datetime
+from flask_app import app  # импортируй готовый app
+from db_instance import db
 
 # === Диалог выбора роли ===
 class RoleDialog(QtWidgets.QDialog):
@@ -80,11 +82,18 @@ def get_available_receivers(sender):
 
 # === Логирование действий ===
 def log_action(user_id, action_type, description):
+    from database.models import ActionLog
+    from datetime import datetime
+    from flask_app import app
+    from db_instance import db
+
     log = ActionLog(
         user_id=user_id,
         action_type=action_type,
         description=description,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now()
     )
-    db.session.add(log)
-    db.session.commit()
+
+    with app.app_context():
+        db.session.add(log)
+        db.session.commit()
