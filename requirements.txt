@@ -4,3 +4,6 @@ pymysql
 Flask
 alembic
 cryptography>=42.0.0
+mysql
+mysql-connector-python
+requests

@@ -1,56 +1,77 @@
-# main_window.py
 import os
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QHBoxLayout, QWidget
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QHBoxLayout, QWidget, QVBoxLayout
+from PyQt5 import QtWidgets, QtCore
+from PyQt5.QtCore import QDate
 from ui.main_window_ui import Ui_MainWindow
-from ui.stage_widget import StageWidget
-from ui.received_assignments_widget import ReceivedAssignmentsWidget
-from ui.notifications_widget import NotificationsWidget
-from ui.history_widget import HistoryWidget
 from ui.select_service_widget import SelectServiceWidget
-from ui.my_sent_widget import MySentWidget
+from ui.assignments_manager_widget import AssignmentsManagerWidget
+from ui.widgets_combined import NotificationsWidget, HistoryWidget
 
+
+# === CalendarWidget встроен прямо здесь ===
+class CalendarWidget(QtWidgets.QCalendarWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setup_ui()
+        self.current_stage_date = None
+
+    def setup_ui(self):
+        self.setGridVisible(True)
+        self.setVerticalHeaderFormat(QtWidgets.QCalendarWidget.NoVerticalHeader)
+
+    def highlight_stage_date(self, date):
+        """Выделение даты текущего этапа"""
+        self.current_stage_date = date
+        self.updateCells()
+
+    def paintCell(self, painter, rect, date):
+        super().paintCell(painter, rect, date)
+        if date == self.current_stage_date:
+            painter.save()
+            painter.setPen(QtCore.Qt.red)
+            painter.drawRect(rect)
+            painter.restore()
+
+
+# === MainWindow ===
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, user):  # ⬅️ Теперь передаём объект User
+    def __init__(self, user):
         super().__init__()
         self.setupUi(self)
         self.setWindowTitle("Система управления этапами")
         self.current_user = user
         self.central_stack = self.stack
 
-        # Навигация
-        self.my_sent_form = MySentWidget(self.current_user)
+        # Основные формы
         self.notifications_form = NotificationsWidget(self.current_user)
         self.history_form = HistoryWidget()
         self.select_service_form = SelectServiceWidget()
 
-        self.central_stack.addWidget(self.my_sent_form)
         self.central_stack.addWidget(self.notifications_form)
         self.central_stack.addWidget(self.history_form)
         self.central_stack.addWidget(self.select_service_form)
 
+        # Панель навигации
         nav_bar = QHBoxLayout()
         container = QWidget()
         container.setLayout(nav_bar)
         self.verticalLayout.insertWidget(0, container)
 
-        # 🔹 Имя пользователя слева
         user_label = QPushButton(f"{self.current_user.full_name} ({self.current_user.role})")
         user_label.setEnabled(False)
         user_label.setStyleSheet("text-align: left; border: none; font-weight: bold;")
         nav_bar.addWidget(user_label)
 
-        # 🔹 Кнопка "Выход"
         logout_btn = QPushButton("🚪 Выйти")
         logout_btn.clicked.connect(self.logout)
         nav_bar.addWidget(logout_btn)
 
-        # Остальные кнопки
         btn_stage = QPushButton("📂 Этапы")
         btn_stage.clicked.connect(lambda: self.load_stage(1))
         nav_bar.addWidget(btn_stage)
 
-        btn_incoming = QPushButton("📥 Входящие")
-        btn_incoming.clicked.connect(self.load_stage_for_employee)
+        btn_incoming = QPushButton("📥 Задания")
+        btn_incoming.clicked.connect(lambda: self.load_stage(1))
         nav_bar.addWidget(btn_incoming)
 
         btn_notifications = QPushButton("🔔 Уведомления")
@@ -65,41 +86,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         btn_letters.clicked.connect(lambda: self.show_form(self.select_service_form))
         nav_bar.addWidget(btn_letters)
 
-        btn_sent = QPushButton("📤 Мои отправки")
-        btn_sent.clicked.connect(lambda: self.show_form(self.my_sent_form))
-        nav_bar.addWidget(btn_sent)
-
-
-        if self.current_user.role == "Главный конструктор":
-            self.load_stage(1)
-        else:
-            self.load_stage_for_employee()
+        # Загрузить этап
+        self.load_stage(1)
 
     def show_form(self, form):
         self.central_stack.setCurrentWidget(form)
 
-    def load_users_for_stage(self):
-        from core import app
-        from database.models import User
-        with app.app_context():
-            return User.query.filter(User.role != "Главный конструктор").all()
-
     def load_stage(self, stage_id):
         from types import SimpleNamespace
-        stage_data = {'name': f"Этап {stage_id}", 'deadline': '2025-12-31'}
-        self.current_stage = SimpleNamespace(id=stage_id)
-        self.stage_form = StageWidget(stage_data, current_user=self.current_user)
-        self.stage_form.populate_user_table(self.load_users_for_stage())
-        self.central_stack.addWidget(self.stage_form)
-        self.show_form(self.stage_form)
+        stage_data = {
+            'id': stage_id,
+            'name': f"Этап {stage_id}",
+            'deadline': '2025-12-31'
+        }
 
-    def load_stage_for_employee(self):
-        self.received_assignments_form = ReceivedAssignmentsWidget(self.current_user)
-        self.central_stack.addWidget(self.received_assignments_form)
-        self.show_form(self.received_assignments_form)
+        # === Задания ===
+        self.assignments_form = AssignmentsManagerWidget(self.current_user, stage_data=stage_data)
+        self.central_stack.addWidget(self.assignments_form)
+
+        # === Календарь ===
+        self.calendar = CalendarWidget()
+        date = QDate.fromString(stage_data['deadline'], "yyyy-MM-dd")
+        self.calendar.highlight_stage_date(date)
+        self.verticalLayout.addWidget(self.calendar)
+
+        self.show_form(self.assignments_form)
 
     def logout(self):
-        from ui.login_window import LoginWindow
+        from ui.unified_full_app import LoginWindow
         if os.path.exists("session.json"):
             os.remove("session.json")
         self.login_window = LoginWindow()

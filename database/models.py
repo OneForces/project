@@ -14,12 +14,14 @@ class User(db.Model):
 
     sent_assignments = db.relationship(
         'Assignment',
+        back_populates='sender',
         foreign_keys='Assignment.sender_id',
         lazy=True
         )
 
     received_assignments = db.relationship(
         'Assignment',
+        back_populates='receiver',
         foreign_keys='Assignment.receiver_id',
         lazy=True
         )
@@ -42,7 +44,11 @@ class Stage(db.Model):
     completed_at = db.Column(db.DateTime)
     status = db.Column(db.String(20), default='Не начат')
 
-    assignments = db.relationship('Assignment', lazy=True)  # ⚠️ УБРАН backref
+    assignments = db.relationship(
+        'Assignment',
+        back_populates='stage',
+        lazy=True
+    )
     documents = db.relationship('Document', backref='stage', lazy=True)
 
     def __repr__(self):
@@ -66,10 +72,25 @@ class Assignment(db.Model):
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(50), default='отправлено')
 
-    # ✅ без backref, только relationship с foreign_keys
-    sender = db.relationship('User', foreign_keys=[sender_id])
-    receiver = db.relationship('User', foreign_keys=[receiver_id])
-    stage = db.relationship('Stage')
+    sender = db.relationship(
+    'User',
+    back_populates='sent_assignments',
+    foreign_keys=[sender_id],
+    overlaps="received_assignments"
+    )
+
+    receiver = db.relationship(
+        'User',
+        back_populates='received_assignments',
+        foreign_keys=[receiver_id],
+        overlaps="sent_assignments"
+    )
+
+    stage = db.relationship(
+        'Stage',
+        back_populates='assignments',
+        overlaps="assignments"
+    )
 
     def __repr__(self):
         return f"<Assignment to={self.receiver_id} file={self.file_path}>"
