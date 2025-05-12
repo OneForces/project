@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QFileDialog, QMessageBox, QPushBut
 from sqlalchemy.orm import subqueryload
 from database.models import Assignment, User, db
 from ui.roles_module_combined import log_action
-from core import app
+from flask import current_app as app
 from ui.roles_module_combined import ROUTING_RULES
 from datetime import datetime
 import os

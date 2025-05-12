@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 from database.models import Assignment, User
-from core import app, db
+from flask import current_app
 
 
 class HistoryWidget(QtWidgets.QWidget):
@@ -20,7 +20,7 @@ class HistoryWidget(QtWidgets.QWidget):
         self.load_sent_assignments()
 
     def load_sent_assignments(self):
-        with app.app_context():
+        with current_app.app_context():
             assignments = Assignment.query.order_by(Assignment.sent_at.desc()).limit(50).all()
             self.table.setRowCount(len(assignments))
 
@@ -51,7 +51,7 @@ class NotificationsWidget(QtWidgets.QWidget):
         self.load_notifications()
 
     def load_notifications(self):
-        with app.app_context():
+        with current_app.app_context():
             incoming = Assignment.query.filter_by(receiver_id=self.current_user.id).all()
             self.table.setRowCount(len(incoming))
             self.table.setColumnCount(3)
@@ -60,7 +60,7 @@ class NotificationsWidget(QtWidgets.QWidget):
             for row, a in enumerate(incoming):
                 sender = User.query.get(a.sender_id)
                 self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(sender.full_name if sender else "—"))
-                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(a.file_path))
+                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(a.file_path or "—"))
                 status = "Ожидает ответа" if not a.response_file else "✔ Отвечено"
                 self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(status))
 

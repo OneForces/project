@@ -1,5 +1,6 @@
 from datetime import datetime
-from core import db
+from db_instance import db
+
 
 
 class User(db.Model):
@@ -54,7 +55,7 @@ class Stage(db.Model):
     def __repr__(self):
         return f"<Stage {self.name} - {self.status}>"
 
-from core import db
+from db_instance import db
 from datetime import datetime
 from database.models import User, Stage  # если ещё не импортировано
 

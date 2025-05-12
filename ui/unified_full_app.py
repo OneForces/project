@@ -10,7 +10,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QIcon
 from werkzeug.security import generate_password_hash, check_password_hash
-from core import app, db
+from flask import current_app as app
+from db_instance import db
 from sqlalchemy.exc import IntegrityError
 from database.models import User, RegistrationCode
 from ui.main_window import MainWindow
