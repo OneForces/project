@@ -55,7 +55,7 @@ class LettersWidget(QtWidgets.QWidget):
         self.body_input.clear()
         self.load_letters()
 
-    def load_letters(self):
+    def load_letters(self): 
         with app.app_context():
             letters = Letter.query.options(
                 joinedload(Letter.sender),
