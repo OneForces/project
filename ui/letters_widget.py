@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QLabel, QTextEdit, QPushButton, QVBoxLayout, QTableW
 from flask_app import app
 from database.models import db, Letter, User
 from datetime import datetime
+from sqlalchemy.orm import joinedload
 
 class LettersWidget(QtWidgets.QWidget):
     def __init__(self, current_user, parent=None):
@@ -56,7 +57,10 @@ class LettersWidget(QtWidgets.QWidget):
 
     def load_letters(self):
         with app.app_context():
-            letters = Letter.query.filter(
+            letters = Letter.query.options(
+                joinedload(Letter.sender),
+                joinedload(Letter.receiver)
+            ).filter(
                 (Letter.sender_id == self.current_user.id) |
                 (Letter.receiver_id == self.current_user.id)
             ).order_by(Letter.created_at.desc()).all()

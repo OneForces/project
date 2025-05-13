@@ -12,7 +12,6 @@ from ui.letters_widget import LettersWidget
 from flask_app import app
 from db_instance import db
 
-
 # === CalendarWidget встроен прямо здесь ===
 class CalendarWidget(QtWidgets.QCalendarWidget):
     def __init__(self, parent=None):
