@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets
 from database.models import Assignment, User
 from flask import current_app
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QPushButton, QLabel
 
 
 class HistoryWidget(QtWidgets.QWidget):
@@ -8,34 +9,33 @@ class HistoryWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.setLayout(QtWidgets.QVBoxLayout())
 
-        self.table = QtWidgets.QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Отправитель", "Получатель", "Этап", "Дата отправки"])
-        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.table.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.layout().addWidget(QLabel("📜 История отправленных заданий"))
 
-        self.layout().addWidget(QtWidgets.QLabel("📜 История отправленных заданий"))
-        self.layout().addWidget(self.table)
+        self.history_area = QTextEdit()
+        self.history_area.setReadOnly(True)
+        self.layout().addWidget(self.history_area)
+
+        self.refresh_button = QPushButton("🔄 Обновить")
+        self.refresh_button.clicked.connect(self.load_sent_assignments)
+        self.layout().addWidget(self.refresh_button)
 
         self.load_sent_assignments()
 
     def load_sent_assignments(self):
         with current_app.app_context():
-            assignments = Assignment.query.order_by(Assignment.sent_at.desc()).limit(50).all()
-            self.table.setRowCount(len(assignments))
+            assignments = Assignment.query.order_by(Assignment.sent_at.desc()).limit(100).all()
 
-            for row, a in enumerate(assignments):
-                sender = User.query.get(a.sender_id)
-                receiver = User.query.get(a.receiver_id)
+        lines = []
+        for a in assignments:
+            sender = User.query.get(a.sender_id)
+            receiver = User.query.get(a.receiver_id)
+            stage = f"этап {a.stage_id}" if a.stage_id else "без этапа"
+            date_str = a.sent_at.strftime('%d.%m.%Y в %H:%M') if a.sent_at else "неизвестно"
 
-                self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(sender.full_name if sender else "—"))
-                self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(receiver.full_name if receiver else "—"))
-                self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(str(a.stage_id)))
-                self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(
-                    a.sent_at.strftime('%Y-%m-%d %H:%M') if a.sent_at else "—"
-                ))
+            line = f"📤 Отправлено от {sender.full_name if sender else '—'} пользователю {receiver.full_name if receiver else '—'} ({stage}) — {date_str}"
+            lines.append(line)
 
-            self.table.resizeColumnsToContents()
+        self.history_area.setText("\n\n".join(lines))
 
 
 class NotificationsWidget(QtWidgets.QWidget):

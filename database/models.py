@@ -1,7 +1,8 @@
 from datetime import datetime
 from db_instance import db
-
-
+import enum
+from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum, Text, Date
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -59,35 +60,44 @@ from db_instance import db
 from datetime import datetime
 from database.models import User, Stage  # если ещё не импортировано
 
+class AssignmentStatus(enum.Enum):
+    SENT = "SENT"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+
 class Assignment(db.Model):
     __tablename__ = 'assignments'
 
-    id = db.Column(db.Integer, primary_key=True)
-    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    stage_id = db.Column(db.Integer, db.ForeignKey('stages.id'), nullable=False)
+    id = Column(Integer, primary_key=True)
+    sender_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    receiver_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    stage_id = Column(Integer, ForeignKey('stages.id'), nullable=False)
+    deadline = db.Column(Date, nullable=True)
+    file_path = Column(String(255))
+    response_file = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    sent_at = Column(DateTime, default=datetime.utcnow)
 
-    file_path = db.Column(db.String(255))
-    response_file = db.Column(db.String(255), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(50), default='отправлено')
+    status = Column(Enum(AssignmentStatus), default=AssignmentStatus.SENT)
 
-    sender = db.relationship(
-    'User',
-    back_populates='sent_assignments',
-    foreign_keys=[sender_id],
-    overlaps="received_assignments"
+    review_comment = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, default=None)
+
+    sender = relationship(
+        'User',
+        back_populates='sent_assignments',
+        foreign_keys=[sender_id],
+        overlaps="received_assignments"
     )
 
-    receiver = db.relationship(
+    receiver = relationship(
         'User',
         back_populates='received_assignments',
         foreign_keys=[receiver_id],
         overlaps="sent_assignments"
     )
 
-    stage = db.relationship(
+    stage = relationship(
         'Stage',
         back_populates='assignments',
         overlaps="assignments"
@@ -129,3 +139,26 @@ class RegistrationCode(db.Model):
 
     def __repr__(self):
         return f"<RegistrationCode {self.code}>"
+
+class Notification(db.Model):
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    message = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    recipient = db.relationship("User", backref="notifications")
+
+class Letter(db.Model):
+    __tablename__ = 'letters'
+
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    subject = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    sender = db.relationship("User", foreign_keys=[sender_id])
+    receiver = db.relationship("User", foreign_keys=[receiver_id])

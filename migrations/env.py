@@ -8,8 +8,9 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # ✅ Импорт приложения и db
-from core import app, db
+from db_instance import  db
 from database import models  # ⬅️ обязательно!
+from flask_app import app
 
 # Настройки Alembic
 config = context.config

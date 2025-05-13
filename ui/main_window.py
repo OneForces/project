@@ -6,6 +6,11 @@ from ui.main_window_ui import Ui_MainWindow
 from ui.select_service_widget import SelectServiceWidget
 from ui.assignments_manager_widget import AssignmentsManagerWidget
 from ui.widgets_combined import NotificationsWidget, HistoryWidget
+from ui.notifications_widget import NotificationsWidget
+from datetime import datetime, timedelta
+from ui.letters_widget import LettersWidget
+from flask_app import app
+from db_instance import db
 
 
 # === CalendarWidget встроен прямо здесь ===
@@ -46,11 +51,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.notifications_form = NotificationsWidget(self.current_user)
         self.history_form = HistoryWidget()
         self.select_service_form = SelectServiceWidget()
+        self.letters_form = LettersWidget(self.current_user)
 
         self.central_stack.addWidget(self.notifications_form)
         self.central_stack.addWidget(self.history_form)
         self.central_stack.addWidget(self.select_service_form)
-
+        self.central_stack.addWidget(self.letters_form)
         # Панель навигации
         nav_bar = QHBoxLayout()
         container = QWidget()
@@ -83,33 +89,103 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         nav_bar.addWidget(btn_history)
 
         btn_letters = QPushButton("✉ Письмо")
-        btn_letters.clicked.connect(lambda: self.show_form(self.select_service_form))
+        btn_letters.clicked.connect(lambda: self.show_form(self.letters_form))  # 🔄 заменено
         nav_bar.addWidget(btn_letters)
+
+        btn_restart = QPushButton("🔄 Новый цикл")
+        btn_restart.clicked.connect(self.restart_cycle)
+        nav_bar.addWidget(btn_restart)
 
         # Загрузить этап
         self.load_stage(1)
+
+        # === Применение глобального стиля ===
+        style_path = os.path.join(os.path.dirname(__file__), "style.qss")
+        if os.path.exists(style_path):
+            with open(style_path, "r", encoding="utf-8") as f:
+                self.setStyleSheet(f.read())
+
+    def restart_cycle(self):
+        from database.models import Assignment
+
+        confirm = QtWidgets.QMessageBox.question(
+            self,
+            "Подтверждение",
+            "Вы уверены, что хотите запустить новый цикл этапов?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        )
+        if confirm != QtWidgets.QMessageBox.Yes:
+            return
+
+        with app.app_context():
+            # Найдём последние задания на этапе 13
+            last_assignments = Assignment.query.filter_by(stage_id=13).all()
+            for a in last_assignments:
+                # создаём новое задание на 1 этапе для того же получателя
+                new_assignment = Assignment(
+                    sender_id=a.sender_id,
+                    receiver_id=a.receiver_id,
+                    stage_id=1,
+                    file_path=None,
+                    response_file=None,
+                    created_at=datetime.utcnow(),
+                    sent_at=None,
+                    status="отправлено"
+                )
+                db.session.add(new_assignment)
+
+            db.session.commit()
+
+        QtWidgets.QMessageBox.information(self, "Успешно", "Цикл этапов начат заново.")
+        self.load_stage(1)
+
 
     def show_form(self, form):
         self.central_stack.setCurrentWidget(form)
 
     def load_stage(self, stage_id):
         from types import SimpleNamespace
+        from PyQt5.QtCore import QDate
+        if 1 <= stage_id <= 3:
+            deadline = datetime.now().date() + timedelta(days=14)
+        elif 4 <= stage_id <= 11:
+            deadline = datetime.now().date() + timedelta(days=3)
+        else:
+            deadline = datetime.now().date() + timedelta(days=7)
+        # Примерная дата дедлайна (в будущем можно рассчитывать автоматически)
         stage_data = {
             'id': stage_id,
             'name': f"Этап {stage_id}",
-            'deadline': '2025-12-31'
+            'deadline': deadline.strftime("%Y-%m-%d")
         }
+        # Удаление предыдущего календаря (если есть)
+        if hasattr(self, "calendar"):
+            self.verticalLayout.removeWidget(self.calendar)
+            self.calendar.deleteLater()
+            del self.calendar
 
         # === Задания ===
-        self.assignments_form = AssignmentsManagerWidget(self.current_user, stage_data=stage_data)
-        self.central_stack.addWidget(self.assignments_form)
+        stage_id = stage_data.get("id", 1) if stage_data else 1
+
+        # Можно при необходимости кастомизировать интерфейс для конкретных этапов
+        if stage_id in [4, 7]:
+            # Поддержка кастомных этапов
+            self.assignments_form = AssignmentsManagerWidget(self.current_user, stage_data={"id": stage_id})
+            self.central_stack.addWidget(self.assignments_form)
+        else:
+            # Общая логика для остальных этапов
+            self.assignments_form = AssignmentsManagerWidget(self.current_user, stage_data=stage_data)
+            self.central_stack.addWidget(self.assignments_form)
+
 
         # === Календарь ===
         self.calendar = CalendarWidget()
-        date = QDate.fromString(stage_data['deadline'], "yyyy-MM-dd")
+        deadline_str = stage_data['deadline']
+        date = QDate.fromString(deadline_str, "yyyy-MM-dd")
         self.calendar.highlight_stage_date(date)
         self.verticalLayout.addWidget(self.calendar)
 
+        # Отображение выбранной формы
         self.show_form(self.assignments_form)
 
     def logout(self):
@@ -119,3 +195,4 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()
+
